@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriBot Pro Max - Asistente Nutricional con IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #10b981; --primary-dark: #059669; --primary-light: #d1fae5;
+            --secondary: #3b82f6; --secondary-light: #dbeafe;
+            --bg-sidebar: #f8fafc; --bg-chat: #ffffff; --bg-message-bot: #f1f5f9; --bg-message-user: #d1fae5;
+            --text-primary: #1e293b; --text-secondary: #64748b; --text-light: #94a3b8;
+            --border: #e2e8f0; --shadow: 0 4px 20px rgba(0,0,0,0.08); --radius: 14px; --radius-lg: 18px;
+            --accent-orange: #f97316; --accent-red: #ef4444; --accent-blue: #3b82f6; --accent-purple: #8b5cf6;
+        }
+        .dark-mode {
+            --bg-sidebar: #0f172a; --bg-chat: #1e293b; --bg-message-bot: #334155; --bg-message-user: #065f46;
+            --text-primary: #f1f5f9; --text-secondary: #cbd5e1; --text-light: #94a3b8;
+            --border: #334155;
+        }
+        .dark-mode .app-container { background: rgba(30,41,59,0.92); }
+        body:not(.dark-mode) .app-container { background: rgba(255,255,255,0.92); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif; background: #f0f2f5; color: var(--text-primary);
+            height: 100vh; overflow: hidden; transition: background 0.3s;
+        }
+        .app-container {
+            display: flex; height: 100vh; max-width: 1500px; margin: 0 auto;
+            background: var(--bg-chat); box-shadow: var(--shadow); border-radius: 0;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 320px; background: var(--bg-sidebar); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 20px; transition: all 0.3s; overflow-y: auto;
+        }
+        .sidebar-header { margin-bottom: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .logo-icon { font-size: 30px; }
+        .logo-text { font-size: 22px; font-weight: 800; color: var(--primary-dark); }
+        .new-chat-btn {
+            width: 100%; padding: 10px 16px; background: var(--primary); color: white;
+            border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.2s; margin-bottom: 8px;
+        }
+        .new-chat-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .tool-btn {
+            width: 100%; padding: 10px 16px; background: transparent; color: var(--text-secondary);
+            border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-weight: 500;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.2s; margin-bottom: 8px; font-family: inherit;
+        }
+        .tool-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .tool-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .sidebar-section { margin-bottom: 18px; }
+        .sidebar-section h3 {
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+            color: var(--text-light); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+        }
+        .topic-list { display: flex; flex-direction: column; gap: 6px; }
+        .topic-btn {
+            padding: 9px 12px; background: var(--bg-chat); border: 1px solid var(--border);
+            border-radius: var(--radius); font-size: 12.5px; text-align: left; cursor: pointer;
+            transition: all 0.2s; color: var(--text-primary); font-family: inherit; font-weight: 500;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .topic-btn:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }
+        .topic-btn .emoji { font-size: 15px; }
+        .sidebar-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
+        .disclaimer { font-size: 10.5px; color: var(--text-light); line-height: 1.5; margin-bottom: 10px; }
+        .theme-toggle {
+            display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);
+            cursor: pointer; padding: 6px 0;
+        }
+        .theme-toggle input { display: none; }
+        .toggle-slider {
+            width: 36px; height: 20px; background: var(--border); border-radius: 20px; position: relative;
+            transition: background 0.3s;
+        }
+        .toggle-slider::after {
+            content: ''; position: absolute; width: 16px; height: 16px; background: white;
+            border-radius: 50%; top: 2px; left: 2px; transition: transform 0.3s;
+        }
+        .theme-toggle input:checked + .toggle-slider { background: var(--primary); }
+        .theme-toggle input:checked + .toggle-slider::after { transform: translateX(16px); }
+        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; }
+        .chat-header {
+            padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--bg-chat);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .chat-header-info h2 { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+        .chat-header-info p { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+        .chat-header-actions { display: flex; gap: 8px; }
+        .header-btn {
+            padding: 6px 12px; background: var(--bg-sidebar); border: 1px solid var(--border);
+            border-radius: 10px; font-size: 12px; cursor: pointer; color: var(--text-secondary);
+            transition: all 0.2s; font-family: inherit; font-weight: 500;
+        }
+        .header-btn:hover { background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary); }
+        .messages-container {
+            flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px;
+        }
+        .message { display: flex; gap: 10px; max-width: 88%; animation: fadeInUp 0.35s ease; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .bot-message { align-self: flex-start; }
+        .user-message { align-self: flex-end; flex-direction: row-reverse; }
+        .message-avatar {
+            width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 16px; flex-shrink: 0; background: var(--primary-light);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .user-message .message-avatar { background: var(--primary); color: white; }
+        .message-content { display: flex; flex-direction: column; gap: 3px; }
+        .message-text {
+            padding: 12px 16px; border-radius: var(--radius-lg); font-size: 13.5px; line-height: 1.7;
+            color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .bot-message .message-text { background: var(--bg-message-bot); border-bottom-left-radius: 4px; }
+        .user-message .message-text { background: var(--bg-message-user); color: var(--primary-dark); border-bottom-right-radius: 4px; }
+        .message-text ul, .message-text ol { margin-left: 18px; margin-top: 6px; margin-bottom: 6px; }
+        .message-text li { margin-bottom: 3px; }
+        .message-text strong { font-weight: 700; }
+        .message-text h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--primary-dark); }
+        .message-text .highlight-box {
+            background: var(--primary-light); border-left: 3px solid var(--primary); padding: 8px 12px;
+            border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 13px;
+        }
+        .message-time { font-size: 10px; color: var(--text-light); padding: 0 4px; }
+        .user-message .message-time { text-align: right; }
+        .typing-indicator { display: flex; gap: 4px; padding: 16px 12px; }
+        .typing-indicator span { width: 7px; height: 7px; background: var(--text-light); border-radius: 50%; animation: typing 1.4s infinite ease-in-out; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+        .input-area { padding: 14px 24px 20px; background: var(--bg-chat); border-top: 1px solid var(--border); }
+        .input-wrapper {
+            display: flex; gap: 8px; align-items: flex-end; background: var(--bg-sidebar);
+            border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 14px;
+            transition: all 0.2s;
+        }
+        .input-wrapper:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        .input-wrapper textarea {
+            flex: 1; border: none; background: transparent; resize: none; font-family: inherit;
+            font-size: 13.5px; color: var(--text-primary); max-height: 120px; outline: none;
+            padding: 6px 0; line-height: 1.5;
+        }
+        .input-wrapper textarea::placeholder { color: var(--text-light); }
+        .send-btn {
+            width: 34px; height: 34px; border-radius: 10px; background: var(--primary); color: white;
+            border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.2s; flex-shrink: 0;
+        }
+        .send-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+        .send-btn:disabled { background: var(--text-light); cursor: not-allowed; transform: none; }
+        .voice-btn {
+            width: 34px; height: 34px; border-radius: 10px; background: var(--bg-sidebar); color: var(--text-secondary);
+            border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.2s; flex-shrink: 0; font-size: 16px;
+        }
+        .voice-btn:hover { background: var(--secondary-light); color: var(--secondary); border-color: var(--secondary); }
+        .voice-btn.recording { background: var(--accent-red); color: white; border-color: var(--accent-red); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .input-hint { text-align: center; font-size: 10px; color: var(--text-light); margin-top: 8px; }
+        .messages-container::-webkit-scrollbar { width: 5px; }
+        .messages-container::-webkit-scrollbar-track { background: transparent; }
+        .messages-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none;
+            align-items: center; justify-content: center; z-index: 1000; animation: fadeIn 0.2s ease;
+        }
+        .modal-overlay.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal {
+            background: var(--bg-chat); border-radius: var(--radius-lg); width: 90%; max-width: 520px;
+            max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+        }
+        .modal.wide { max-width: 720px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+        .modal-close {
+            background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-light);
+            width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+        }
+        .modal-close:hover { background: var(--bg-message-bot); color: var(--text-primary); }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+        .form-input {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+            font-size: 14px; font-family: inherit; background: var(--bg-sidebar); color: var(--text-primary);
+            transition: border-color 0.2s;
+        }
+        .form-input:focus { outline: none; border-color: var(--primary); }
+        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+        .calc-btn {
+            width: 100%; padding: 12px; background: var(--primary); color: white; border: none;
+            border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+            transition: all 0.2s; margin-top: 4px;
+        }
+        .calc-btn:hover { background: var(--primary-dark); }
+        .result-box {
+            background: var(--primary-light); border: 1px solid var(--primary); border-radius: 10px;
+            padding: 16px; margin-top: 16px; text-align: center; display: none;
+        }
+        .result-box.show { display: block; }
+        .result-value { font-size: 36px; font-weight: 800; color: var(--primary-dark); }
+        .result-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+        .result-category { font-size: 14px; font-weight: 600; color: var(--primary-dark); margin-top: 8px; }
+        .water-tracker {
+            display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 14px;
+            background: var(--bg-sidebar); border-radius: 10px; border: 1px solid var(--border);
+        }
+        .water-bar { flex: 1; height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; }
+        .water-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4); border-radius: 5px; transition: width 0.5s ease; width: 0%; }
+        .water-btn { padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; }
+        .water-btn:hover { background: #2563eb; }
+        .water-count { font-size: 12px; font-weight: 600; color: var(--text-secondary); min-width: 60px; text-align: right; }
+
+        .chart-box { margin-top: 16px; background: var(--bg-sidebar); border-radius: 12px; padding: 16px; }
+        .chart-canvas { max-height: 220px; }
+        .macro-row { display: flex; gap: 10px; margin-top: 10px; }
+        .macro-card {
+            flex: 1; padding: 12px; border-radius: 10px; text-align: center; font-size: 12px;
+            background: var(--bg-chat); border: 1px solid var(--border);
+        }
+        .macro-card .val { font-size: 18px; font-weight: 800; }
+        .macro-prot { color: var(--accent-orange); }
+        .macro-carb { color: var(--accent-blue); }
+        .macro-fat { color: var(--accent-purple); }
+
+        .api-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700;
+            margin-left: 6px; vertical-align: middle;
+        }
+        .api-badge.openai { background: #10a37f; color: white; }
+        .api-badge.gemini { background: #4285f4; color: white; }
+        .api-badge.claude { background: #d97757; color: white; }
+        .api-badge.local { background: var(--text-light); color: white; }
+        .api-badge.off { background: var(--border); color: var(--text-secondary); }
+
+        .quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .quick-reply {
+            padding: 6px 12px; background: var(--bg-sidebar); border: 1px solid var(--border);
+            border-radius: 20px; font-size: 11.5px; cursor: pointer; color: var(--text-secondary);
+            transition: all 0.2s; font-family: inherit; font-weight: 500;
+        }
+        .quick-reply:hover { background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary); }
+        .quick-reply:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .history-item {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px;
+            cursor: pointer; transition: all 0.2s; font-size: 12.5px; background: var(--bg-chat);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .history-item:hover { border-color: var(--primary); background: var(--primary-light); }
+        .history-item .del { color: var(--accent-red); cursor: pointer; padding: 4px 6px; border-radius: 4px; }
+        .history-item .del:hover { background: rgba(239,68,68,0.1); }
+        .history-date { font-size: 10px; color: var(--text-light); }
+
+        .meal-card {
+            background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: 12px;
+            padding: 14px; margin-bottom: 10px;
+        }
+        .meal-card h4 { font-size: 14px; margin-bottom: 6px; color: var(--primary-dark); }
+        .meal-card ul { font-size: 12.5px; margin-left: 16px; line-height: 1.6; color: var(--text-secondary); }
+        .meal-card ul li { margin-bottom: 2px; }
+        .meal-total { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .message { max-width: 95%; }
+            .chat-header { padding: 12px 16px; }
+            .messages-container { padding: 16px; }
+            .input-area { padding: 12px 16px 16px; }
+            .form-row { grid-template-columns: 1fr; }
+            .form-row.three { grid-template-columns: 1fr; }
+            .macro-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🥗</span>
+                    <span class="logo-text">NutriBot Pro Max</span>
+                </div>
+                <button class="new-chat-btn" onclick="newChat()">
+                    <span>+</span> Nueva conversación
+                </button>
+                <button class="tool-btn" onclick="openIMC()">📊 Calculadora IMC</button>
+                <button class="tool-btn" onclick="openTDEE()">🔥 Calculadora TDEE</button>
+                <button class="tool-btn" onclick="openWater()">💧 Tracker de Agua</button>
+                <button class="tool-btn" onclick="openMealPlanner()">🍽️ Meal Planner</button>
+                <button class="tool-btn" onclick="openProgress()">📈 Progreso</button>
+                <button class="tool-btn" onclick="openHistory()">🗂️ Historial</button>
+                <button class="tool-btn" onclick="openSettings()">⚙️ Configuración IA</button>
+            </div>
+            <div class="sidebar-section">
+                <h3>🍎 Temas populares</h3>
+                <div class="topic-list">
+                    <button class="topic-btn" onclick="sendTopic('¿Qué desayuno saludable me recomiendas?')"><span class="emoji">🍳</span> Desayunos saludables</button>
+                    <button class="topic-btn" onclick="sendTopic('Cómo perder peso de forma saludable')"><span class="emoji">⚖️</span> Pérdida de peso</button>
+                    <button class="topic-btn" onclick="sendTopic('¿Cuánta proteína necesito si hago ejercicio?')"><span class="emoji">💪</span> Proteínas y músculo</button>
+                    <button class="topic-btn" onclick="sendTopic('Recetas rápidas para la cena')"><span class="emoji">🍽️</span> Recetas rápidas</button>
+                    <button class="topic-btn" onclick="sendTopic('¿Debo tomar suplementos?')"><span class="emoji">💊</span> Suplementación</button>
+                    <button class="topic-btn" onclick="sendTopic('¿Cuánta agua debo beber al día?')"><span class="emoji">💧</span> Hidratación</button>
+                    <button class="topic-btn" onclick="sendTopic('Dieta vegetariana saludable')"><span class="emoji">🌱</span> Nutrición vegetariana</button>
+                    <button class="topic-btn" onclick="sendTopic('Qué debo comer si tengo diabetes')"><span class="emoji">🩺</span> Diabetes y alimentación</button>
+                    <button class="topic-btn" onclick="sendTopic('Información sobre el ayuno intermitente')"><span class="emoji">⏰</span> Ayuno intermitente</button>
+                    <button class="topic-btn" onclick="sendTopic('Cómo contar calorías correctamente')"><span class="emoji">🧮</span> Contar calorías</button>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="disclaimer">⚠️ NutriBot es un asistente informativo. No sustituye el consejo médico profesional.</div>
+                <label class="theme-toggle">
+                    <span>🌙 Modo oscuro</span>
+                    <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </aside>
+
+        <main class="chat-area">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <h2>🥗 NutriBot Pro Max <span id="apiBadge" class="api-badge off">Local</span></h2>
+                    <p id="apiStatus">Asistente nutricional con IA • v3.0</p>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="header-btn" onclick="exportChatPDF()">📄 PDF</button>
+                    <button class="header-btn" onclick="exportChat()">📥 TXT</button>
+                    <button class="header-btn" onclick="openIMC()">📊 IMC</button>
+                </div>
+            </div>
+            <div class="messages-container" id="messagesContainer"></div>
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()" title="Dictar por voz">🎙️</button>
+                    <textarea id="messageInput" placeholder="Escribe tu pregunta nutricional..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+                    <button class="send-btn" onclick="sendMessage()" id="sendBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </div>
+                <div class="input-hint">Enter para enviar • Shift + Enter para nueva línea • 🎙️ para dictar</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal IMC -->
+    <div class="modal-overlay" id="modalIMC">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">📊 Calculadora de IMC</span>
+                <button class="modal-close" onclick="closeModal('modalIMC')">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Peso (kg)</label>
+                    <input type="number" class="form-input" id="imcWeight" placeholder="Ej: 70">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Altura (cm)</label>
+                    <input type="number" class="form-input" id="imcHeight" placeholder="Ej: 170">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Sexo</label>
+                <select class="form-input form-select" id="imcGender">
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                </select>
+            </div>
+            <button class="calc-btn" onclick="calculateIMC()">Calcular IMC</button>
+            <div class="result-box" id="imcResult">
+                <div class="result-value" id="imcValue">--</div>
+                <div class="result-label">Índice de Masa Corporal</div>
+                <div class="result-category" id="imcCategory">--</div>
+                <div style="margin-top:10px; font-size:12px; color: var(--text-secondary); line-height:1.6;" id="imcAdvice"></div>
+            </div>
+            <div class="chart-box" id="imcChartBox" style="display:none;">
+                <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">📈 Historial de IMC</div>
+                <canvas id="imcChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal TDEE -->
+    <div class="modal-overlay" id="modalTDEE">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">🔥 Calculadora TDEE (Mifflin-St Jeor)</span>
+                <button class="modal-close" onclick="closeModal('modalTDEE')">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Edad (años)</label><input type="number" class="form-input" id="tdeeAge" placeholder="Ej: 30"></div>
+                <div class="form-group"><label class="form-label">Peso (kg)</label><input type="number" class="form-input" id="tdeeWeight" placeholder="Ej: 70"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Altura (cm)</label><input type="number" class="form-input" id="tdeeHeight" placeholder="Ej: 170"></div>
+                <div class="form-group">
+                    <label class="form-label">Sexo</label>
+                    <select class="form-input form-select" id="tdeeGender">
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Nivel de actividad</label>
+                <select class="form-input form-select" id="tdeeActivity">
+                    <option value="1.2">Sedentario (poco o nada de ejercicio)</option>
+                    <option value="1.375">Ligeramente activo (1-3 días/semana)</option>
+                    <option value="1.55">Moderadamente activo (3-5 días/semana)</option>
+                    <option value="1.725">Muy activo (6-7 días/semana)</option>
+                    <option value="1.9">Extremadamente activo (trabajo físico + ejercicio)</option>
+                </select>
+            </div>
+            <button class="calc-btn" onclick="calculateTDEE()">Calcular TDEE</button>
+            <div class="result-box" id="tdeeResult">
+                <div class="result-value" id="tdeeValue">--</div>
+                <div class="result-label">Calorías/día para mantener peso</div>
+                <div class="result-category" id="tdeeCategory">--</div>
+            </div>
+            <div class="macro-row" id="tdeeMacros" style="display:none;">
+                <div class="macro-card"><div class="val macro-prot" id="macroProt">--</div><div>Proteína (30%)</div></div>
+                <div class="macro-card"><div class="val macro-carb" id="macroCarb">--</div><div>Carbohidratos (40%)</div></div>
+                <div class="macro-card"><div class="val macro-fat" id="macroFat">--</div><div>Grasas (30%)</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Agua -->
+    <div class="modal-overlay" id="modalWater">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">💧 Tracker de Agua</span>
+                <button class="modal-close" onclick="closeModal('modalWater')">&times;</button>
+            </div>
+            <p style="font-size:13px; color: var(--text-secondary); margin-bottom: 16px; line-height:1.6;">
+                Objetivo diario recomendado: <strong>2.5 litros</strong> (aproximadamente 10 vasos de 250ml). Ajusta según tu actividad física y clima.
+            </p>
+            <div class="water-tracker">
+                <div class="water-bar"><div class="water-fill" id="waterFill"></div></div>
+                <span class="water-count" id="waterCount">0 / 10</span>
+                <button class="water-btn" onclick="addWater()">+ Vaso</button>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="header-btn" onclick="resetWater()">🔄 Reiniciar</button>
+                <button class="header-btn" onclick="setWaterGoal()">🎯 Cambiar meta</button>
+            </div>
+            <div class="chart-box" id="waterChartBox" style="margin-top:16px;">
+                <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">📈 Historial semanal de agua</div>
+                <canvas id="waterChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Meal Planner -->
+    <div class="modal-overlay" id="modalMeal">
+        <div class="modal wide">
+            <div class="modal-header">
+                <span class="modal-title">🍽️ Meal Planner Semanal</span>
+                <button class="modal-close" onclick="closeModal('modalMeal')">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Calorías diarias objetivo</label>
+                    <input type="number" class="form-input" id="mealCal" placeholder="Ej: 2000" value="2000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo de dieta</label>
+                    <select class="form-input form-select" id="mealType">
+                        <option value="balance">Balanceada</option>
+                        <option value="lowcarb">Baja en carbohidratos</option>
+                        <option value="highprot">Alta en proteína</option>
+                        <option value="keto">Keto / Cetogénica</option>
+                        <option value="vegetarian">Vegetariana</option>
+                        <option value="vegan">Vegana</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row three">
+                <div class="form-group">
+                    <label class="form-label">% Proteína</label>
+                    <input type="number" class="form-input" id="mealProt" value="30" min="5" max="60">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">% Carbohidratos</label>
+                    <input type="number" class="form-input" id="mealCarb" value="40" min="5" max="70">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">% Grasas</label>
+                    <input type="number" class="form-input" id="mealFat" value="30" min="5" max="60">
+                </div>
+            </div>
+            <button class="calc-btn" onclick="generateMealPlan()">Generar Plan Semanal</button>
+            <div id="mealPlanResult" style="margin-top:16px;"></div>
+            <div class="chart-box" id="mealChartBox" style="display:none;">
+                <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">📊 Distribución de macros</div>
+                <canvas id="mealChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Progreso -->
+    <div class="modal-overlay" id="modalProgress">
+        <div class="modal wide">
+            <div class="modal-header">
+                <span class="modal-title">📈 Progreso Nutricional</span>
+                <button class="modal-close" onclick="closeModal('modalProgress')">&times;</button>
+            </div>
+            <div class="form-row">
+                <div class="chart-box" style="flex:1;">
+                    <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">📊 IMC a lo largo del tiempo</div>
+                    <canvas id="progressIMCChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-box" style="flex:1;">
+                    <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">💧 Consumo de agua (últimos 7 días)</div>
+                    <canvas id="progressWaterChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+            <div class="chart-box" style="margin-top:16px;">
+                <div style="font-size:12px; font-weight:600; margin-bottom:8px; color:var(--text-secondary);">🍽️ Resumen de plan semanal generado</div>
+                <div id="progressMealSummary" style="font-size:13px; color:var(--text-secondary); line-height:1.6;">Aún no has generado un plan semanal. Usa el Meal Planner para crear uno.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial -->
+    <div class="modal-overlay" id="modalHistory">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">🗂️ Historial de Conversaciones</span>
+                <button class="modal-close" onclick="closeModal('modalHistory')">&times;</button>
+            </div>
+            <div id="historyList" style="max-height:400px; overflow-y:auto;"></div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <button class="header-btn" onclick="saveCurrentChat()">💾 Guardar chat actual</button>
+                <button class="header-btn" onclick="clearAllHistory()" style="color:var(--accent-red);">🗑️ Borrar todo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuración -->
+    <div class="modal-overlay" id="modalSettings">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">⚙️ Configuración de IA</span>
+                <button class="modal-close" onclick="closeModal('modalSettings')">&times;</button>
+            </div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
+                Configura tu proveedor de IA preferido. Si no configuras ninguno, NutriBot usará su motor local de respuestas inteligentes. <strong>Tu API key se guarda solo en tu navegador (localStorage).</strong>
+            </p>
+            <div class="form-group">
+                <label class="form-label">Proveedor de IA</label>
+                <select class="form-input form-select" id="aiProvider" onchange="updateAIFields()">
+                    <option value="none">Motor local (sin API key)</option>
+                    <option value="openai">OpenAI (GPT-4o / GPT-3.5)</option>
+                    <option value="gemini">Google Gemini (1.5 Flash / Pro)</option>
+                    <option value="claude">Anthropic Claude (3.5 Sonnet / Haiku)</option>
+                </select>
+            </div>
+            <div class="form-group" id="apiKeyGroup" style="display:none;">
+                <label class="form-label">API Key</label>
+                <input type="password" class="form-input" id="apiKey" placeholder="Pega tu API key aquí">
+            </div>
+            <div class="form-group" id="modelGroup" style="display:none;">
+                <label class="form-label">Modelo</label>
+                <select class="form-input form-select" id="aiModel">
+                    <option value="gpt-4o-mini">gpt-4o-mini (rápido y económico)</option>
+                    <option value="gpt-4o">gpt-4o (más inteligente)</option>
+                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Instrucciones del sistema (system prompt)</label>
+                <textarea class="form-input" id="systemPrompt" rows="4" style="resize:vertical; font-size:12px;">Eres NutriBot Pro Max, un asistente nutricional experto, amable y basado en evidencia científica. Responde en español. Da consejos prácticos, precisos y seguros. Nunca sustituyas el consejo médico profesional. Incluye listas, cifras concretas y recomendaciones accionables cuando sea posible. Si el usuario menciona condiciones médicas graves, recuerda siempre recomendar consultar a un profesional.</textarea>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px;">
+                <input type="checkbox" id="useLocalFallback" checked style="width:16px; height:16px;">
+                <label for="useLocalFallback" style="font-size:12px; color:var(--text-secondary);">Usar motor local como fallback si la IA falla</label>
+            </div>
+            <button class="calc-btn" onclick="saveSettings()">💾 Guardar configuración</button>
+            <div style="margin-top:12px; padding:10px; background:var(--bg-sidebar); border-radius:8px; font-size:11px; color:var(--text-secondary); line-height:1.5;">
+                <strong>💡 Consejos:</strong><br>
+                • OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--primary);">Obtener API key</a><br>
+                • Google Gemini: <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary);">Obtener API key</a><br>
+                • Anthropic Claude: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary);">Obtener API key</a>
+            </div>
+        </div>
+    </div>
+
+<script>
+/* ============ STATE ============ */
+let messages = [];
+let isTyping = false;
+let waterGlasses = 0;
+let waterGoal = 10;
+let apiConfig = { provider: 'none', key: '', model: 'gpt-4o-mini', systemPrompt: '', useLocalFallback: true };
+let chatHistory = [];
+let imcHistory = [];
+let waterHistory = {};
+let mealPlan = null;
+let recognition = null;
+let charts = {};
+
+const container = document.getElementById('messagesContainer');
+const input = document.getElementById('messageInput');
+const btn = document.getElementById('sendBtn');
+
+/* ============ INIT ============ */
+function init() {
+    loadSettings();
+    loadWater();
+    loadIMCHistory();
+    loadWaterHistory();
+    loadChatHistory();
+    loadCurrentChat();
+    updateAPIBadge();
+    initVoice();
+    if (messages.length === 0) showWelcome();
+}
+
+/* ============ THEME ============ */
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('nutriTheme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+}
+if (localStorage.getItem('nutriTheme') === 'dark') {
+    document.body.classList.add('dark-mode');
+    document.getElementById('themeToggle').checked = true;
+}
+
+/* ============ API BADGE ============ */
+function updateAPIBadge() {
+    const badge = document.getElementById('apiBadge');
+    const status = document.getElementById('apiStatus');
+    if (!apiConfig.provider || apiConfig.provider === 'none') {
+        badge.textContent = 'Local'; badge.className = 'api-badge local';
+        status.textContent = 'Motor local de respuestas inteligentes • v3.0';
+    } else if (apiConfig.provider === 'openai') {
+        badge.textContent = 'OpenAI'; badge.className = 'api-badge openai';
+        status.textContent = 'Conectado a OpenAI (' + apiConfig.model + ') • v3.0';
+    } else if (apiConfig.provider === 'gemini') {
+        badge.textContent = 'Gemini'; badge.className = 'api-badge gemini';
+        status.textContent = 'Conectado a Google Gemini • v3.0';
+    } else if (apiConfig.provider === 'claude') {
+        badge.textContent = 'Claude'; badge.className = 'api-badge claude';
+        status.textContent = 'Conectado a Anthropic Claude • v3.0';
+    }
+}
+
+/* ============ SETTINGS ============ */
+function loadSettings() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('nutriSettings') || '{}');
+        if (saved.provider) apiConfig = saved;
+    } catch(e) {}
+}
+function saveSettings() {
+    apiConfig.provider = document.getElementById('aiProvider').value;
+    apiConfig.key = document.getElementById('apiKey').value.trim();
+    apiConfig.model = document.getElementById('aiModel').value;
+    apiConfig.systemPrompt = document.getElementById('systemPrompt').value;
+    apiConfig.useLocalFallback = document.getElementById('useLocalFallback').checked;
+    localStorage.setItem('nutriSettings', JSON.stringify(apiConfig));
+    updateAPIBadge();
+    closeModal('modalSettings');
+    addMessage('bot', '⚙️ Configuración guardada. ' + (apiConfig.provider !== 'none' ? 'IA activada: ' + apiConfig.provider : 'Usando motor local.'));
+}
+function openSettings() {
+    document.getElementById('aiProvider').value = apiConfig.provider || 'none';
+    document.getElementById('apiKey').value = apiConfig.key || '';
+    document.getElementById('aiModel').value = apiConfig.model || 'gpt-4o-mini';
+    document.getElementById('systemPrompt').value = apiConfig.systemPrompt || 'Eres NutriBot Pro Max, un asistente nutricional experto, amable y basado en evidencia científica. Responde en español. Da consejos prácticos, precisos y seguros. Nunca sustituyas el consejo médico profesional. Incluye listas, cifras concretas y recomendaciones accionables cuando sea posible. Si el usuario menciona condiciones médicas graves, recuerda siempre recomendar consultar a un profesional.';
+    document.getElementById('useLocalFallback').checked = apiConfig.useLocalFallback !== false;
+    updateAIFields();
+    document.getElementById('modalSettings').classList.add('active');
+}
+function updateAIFields() {
+    const prov = document.getElementById('aiProvider').value;
+    const keyGroup = document.getElementById('apiKeyGroup');
+    const modelGroup = document.getElementById('modelGroup');
+    const modelSelect = document.getElementById('aiModel');
+    if (prov === 'none') {
+        keyGroup.style.display = 'none'; modelGroup.style.display = 'none';
+    } else {
+        keyGroup.style.display = 'block'; modelGroup.style.display = 'block';
+        modelSelect.innerHTML = '';
+        if (prov === 'openai') {
+            modelSelect.innerHTML = '<option value="gpt-4o-mini">gpt-4o-mini (rápido y económico)</option><option value="gpt-4o">gpt-4o (más inteligente)</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+        } else if (prov === 'gemini') {
+            modelSelect.innerHTML = '<option value="gemini-1.5-flash">gemini-1.5-flash (rápido)</option><option value="gemini-1.5-pro">gemini-1.5-pro (más inteligente)</option>';
+        } else if (prov === 'claude') {
+            modelSelect.innerHTML = '<option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet</option><option value="claude-3-haiku-20240307">claude-3-haiku (más rápido)</option>';
+        }
+        modelSelect.value = apiConfig.model || modelSelect.options[0].value;
+    }
+}
+
+/* ============ WATER TRACKER ============ */
+function loadWater() { waterGlasses = parseInt(localStorage.getItem('nutriWater') || '0'); updateWaterUI(); }
+function updateWaterUI() {
+    const pct = Math.min((waterGlasses / waterGoal) * 100, 100);
+    document.getElementById('waterFill').style.width = pct + '%';
+    document.getElementById('waterCount').textContent = waterGlasses + ' / ' + waterGoal;
+    saveWaterHistory();
+}
+function addWater() { waterGlasses++; localStorage.setItem('nutriWater', waterGlasses); updateWaterUI(); }
+function resetWater() { waterGlasses = 0; localStorage.setItem('nutriWater', '0'); updateWaterUI(); }
+function setWaterGoal() {
+    const g = prompt('Nuevo objetivo de vasos (1 vaso = 250ml):', waterGoal);
+    if (g && !isNaN(g) && g > 0) { waterGoal = parseInt(g); localStorage.setItem('nutriWaterGoal', waterGoal); updateWaterUI(); }
+}
+function loadWaterGoal() { const g = localStorage.getItem('nutriWaterGoal'); if (g) waterGoal = parseInt(g); }
+loadWaterGoal();
+
+function saveWaterHistory() {
+    const today = new Date().toISOString().slice(0,10);
+    try {
+        let h = JSON.parse(localStorage.getItem('nutriWaterHistory') || '{}');
+        h[today] = waterGlasses; localStorage.setItem('nutriWaterHistory', JSON.stringify(h));
+    } catch(e) {}
+}
+function loadWaterHistory() {
+    try { waterHistory = JSON.parse(localStorage.getItem('nutriWaterHistory') || '{}'); } catch(e) { waterHistory = {}; }
+}
+
+function renderWaterChart() {
+    const ctx = document.getElementById('waterChart'); if (!ctx) return;
+    const labels = [], data = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0,10);
+        labels.push(d.toLocaleDateString('es', {weekday:'short'}));
+        data.push(waterHistory[key] || 0);
+    }
+    if (charts.water) charts.water.destroy();
+    charts.water = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Vasos', data, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: Math.max(...data, waterGoal) + 2 } }, plugins: { legend: { display: false } } }
+    });
+}
+
+/* ============ MODALS ============ */
+function openIMC() { document.getElementById('modalIMC').classList.add('active'); renderIMCChart(); }
+function openTDEE() { document.getElementById('modalTDEE').classList.add('active'); }
+function openWater() { document.getElementById('modalWater').classList.add('active'); renderWaterChart(); }
+function openMealPlanner() { document.getElementById('modalMeal').classList.add('active'); }
+function openProgress() { document.getElementById('modalProgress').classList.add('active'); renderProgressCharts(); renderMealSummary(); }
+function openHistory() { document.getElementById('modalHistory').classList.add('active'); renderHistoryList(); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
+
+/* ============ IMC CALCULATOR ============ */
+function calculateIMC() {
+    const w = parseFloat(document.getElementById('imcWeight').value);
+    const h = parseFloat(document.getElementById('imcHeight').value) / 100;
+    if (!w || !h || w <= 0 || h <= 0) { alert('Por favor ingresa peso y altura válidos'); return; }
+    const imc = (w / (h * h)).toFixed(1);
+    let cat = '', color = '', advice = '';
+    if (imc < 18.5) { cat = 'Bajo peso'; color = '#f59e0b'; advice = 'Se recomienda aumentar la ingesta calórica con alimentos nutritivos y densos. Consulta con un nutricionista para un plan adecuado.'; }
+    else if (imc < 25) { cat = 'Peso normal'; color = '#10b981'; advice = '¡Excelente! Mantén una dieta equilibrada, ejercicio regular y hábitos saludables.'; }
+    else if (imc < 30) { cat = 'Sobrepeso'; color = '#f97316'; advice = 'Considera reducir 300-500 kcal diarias, aumentar actividad física y priorizar alimentos integrales. Consulta a un profesional.'; }
+    else { cat = 'Obesidad'; color = '#ef4444'; advice = 'Es importante consultar con un médico y nutricionista para un plan personalizado y seguro de pérdida de peso.'; }
+    document.getElementById('imcValue').textContent = imc;
+    document.getElementById('imcValue').style.color = color;
+    document.getElementById('imcCategory').textContent = cat;
+    document.getElementById('imcCategory').style.color = color;
+    document.getElementById('imcAdvice').textContent = advice;
+    document.getElementById('imcResult').classList.add('show');
+    saveIMCHistory(parseFloat(imc), w, h*100);
+    renderIMCChart();
+}
+function saveIMCHistory(imc, weight, height) {
+    const today = new Date().toISOString().slice(0,10);
+    imcHistory.push({ date: today, imc, weight, height });
+    localStorage.setItem('nutriIMCHistory', JSON.stringify(imcHistory));
+}
+function loadIMCHistory() {
+    try { imcHistory = JSON.parse(localStorage.getItem('nutriIMCHistory') || '[]'); } catch(e) { imcHistory = []; }
+}
+function renderIMCChart() {
+    const ctx = document.getElementById('imcChart');
+    const box = document.getElementById('imcChartBox');
+    if (!ctx || imcHistory.length === 0) return;
+    box.style.display = 'block';
+    const labels = imcHistory.map((h,i) => h.date + (i===imcHistory.length-1?' (hoy)':''));
+    const data = imcHistory.map(h => h.imc);
+    if (charts.imc) charts.imc.destroy();
+    charts.imc = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'IMC', data, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3, pointRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 15, max: 40 } }, plugins: { legend: { display: false } } }
+    });
+}
+
+/* ============ TDEE CALCULATOR ============ */
+function calculateTDEE() {
+    const age = parseInt(document.getElementById('tdeeAge').value);
+    const weight = parseFloat(document.getElementById('tdeeWeight').value);
+    const height = parseFloat(document.getElementById('tdeeHeight').value);
+    const gender = document.getElementById('tdeeGender').value;
+    const activity = parseFloat(document.getElementById('tdeeActivity').value);
+    if (!age || !weight || !height || age <= 0 || weight <= 0 || height <= 0) { alert('Ingresa todos los datos válidos'); return; }
+    let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+    bmr += gender === 'M' ? 5 : -161;
+    const tdee = Math.round(bmr * activity);
+    let cat = '';
+    if (activity <= 1.2) cat = 'Sedentario';
+    else if (activity <= 1.375) cat = 'Ligeramente activo';
+    else if (activity <= 1.55) cat = 'Moderadamente activo';
+    else if (activity <= 1.725) cat = 'Muy activo';
+    else cat = 'Extremadamente activo';
+    document.getElementById('tdeeValue').textContent = tdee + ' kcal';
+    document.getElementById('tdeeCategory').textContent = cat + ' • BMR: ' + Math.round(bmr) + ' kcal';
+    document.getElementById('tdeeResult').classList.add('show');
+    const prot = Math.round((tdee * 0.30) / 4);
+    const carb = Math.round((tdee * 0.40) / 4);
+    const fat = Math.round((tdee * 0.30) / 9);
+    document.getElementById('macroProt').textContent = prot + 'g';
+    document.getElementById('macroCarb').textContent = carb + 'g';
+    document.getElementById('macroFat').textContent = fat + 'g';
+    document.getElementById('tdeeMacros').style.display = 'flex';
+}
+
+/* ============ MEAL PLANNER ============ */
+function generateMealPlan() {
+    const cal = parseInt(document.getElementById('mealCal').value) || 2000;
+    const type = document.getElementById('mealType').value;
+    let p = parseInt(document.getElementById('mealProt').value) || 30;
+    let c = parseInt(document.getElementById('mealCarb').value) || 40;
+    let f = parseInt(document.getElementById('mealFat').value) || 30;
+    const total = p + c + f;
+    if (Math.abs(total - 100) > 5) { alert('Los porcentajes de macros deben sumar aproximadamente 100%. Actual: ' + total + '%'); return; }
+
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const meals = { balance: BALANCE_MEALS, lowcarb: LOWCARB_MEALS, highprot: HIGHPROT_MEALS, keto: KETO_MEALS, vegetarian: VEGETARIAN_MEALS, vegan: VEGAN_MEALS };
+    const pool = meals[type] || meals.balance;
+    let html = '';
+    days.forEach(day => {
+        const m = pool[Math.floor(Math.random() * pool.length)];
+        html += '<div class="meal-card"><h4>📅 ' + day + '</h4><ul>' + m.items.map(i => '<li>' + i + '</li>').join('') + '</ul><div class="meal-total">' + m.totals + '</div></div>';
+    });
+    document.getElementById('mealPlanResult').innerHTML = html;
+    document.getElementById('mealChartBox').style.display = 'block';
+    mealPlan = { cal, p, c, f, days };
+    localStorage.setItem('nutriMealPlan', JSON.stringify(mealPlan));
+    renderMealChart(p, c, f);
+}
+function renderMealChart(p, c, f) {
+    const ctx = document.getElementById('mealChart'); if (!ctx) return;
+    if (charts.meal) charts.meal.destroy();
+    charts.meal = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Proteína ' + p + '%', 'Carbohidratos ' + c + '%', 'Grasas ' + f + '%'], datasets: [{ data: [p, c, f], backgroundColor: ['#f97316', '#3b82f6', '#8b5cf6'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+    });
+}
+function renderMealSummary() {
+    const el = document.getElementById('progressMealSummary');
+    try {
+        const mp = JSON.parse(localStorage.getItem('nutriMealPlan') || 'null');
+        if (!mp) { el.textContent = 'Aún no has generado un plan semanal. Usa el Meal Planner para crear uno.'; return; }
+        el.innerHTML = 'Último plan: <strong>' + mp.cal + ' kcal/día</strong> • Macros: Proteína ' + mp.p + '%, Carbohidratos ' + mp.c + '%, Grasas ' + mp.f + '% • Generado el ' + new Date().toLocaleDateString('es') + '.';
+    } catch(e) { el.textContent = 'Aún no has generado un plan semanal.'; }
+}
+
+const BALANCE_MEALS = [
+    { items: ['Desayuno: Avena con leche, plátano y nueces (350 kcal)','Almuerzo: Pechuga de pollo, arroz integral y vegetales (500 kcal)','Cena: Salmón al horno con ensalada y quinoa (400 kcal)','Snacks: Yogur griego + manzana (250 kcal)'], totals: '~1500 kcal • 100g proteína • 150g carbohidratos • 45g grasas' },
+    { items: ['Desayuno: Tostadas de aguacate con huevo pochado (400 kcal)','Almuerzo: Bowl de quinoa, garbanzos, vegetales y aderezo de limón (500 kcal)','Cena: Pechuga de pavo a la plancha con batata asada (450 kcal)','Snacks: Almendras + pera (200 kcal)'], totals: '~1550 kcal • 95g proteína • 160g carbohidratos • 50g grasas' },
+    { items: ['Desayuno: Smoothie de proteína con frutos rojos y avena (350 kcal)','Almuerzo: Wrap integral de pollo, lechuga, tomate y hummus (500 kcal)','Cena: Lentejas con espinacas y huevo cocido (450 kcal)','Snacks: Cottage cheese + melón (250 kcal)'], totals: '~1550 kcal • 105g proteína • 155g carbohidratos • 40g grasas' }
+];
+const LOWCARB_MEALS = [
+    { items: ['Desayuno: Omelette de 3 huevos con espinacas y champiñones (400 kcal)','Almuerzo: Pollo a la plancha con ensalada de aguacate (550 kcal)','Cena: Salmón con espárragos y aceite de oliva (450 kcal)','Snacks: Nueces + queso cottage (200 kcal)'], totals: '~1600 kcal • 110g proteína • 60g carbohidratos • 95g grasas' },
+    { items: ['Desayuno: Yogur griego con chía y almendras (350 kcal)','Almuerzo: Hamburguesa de ternera sin pan con lechuga y tomate (600 kcal)','Cena: Sopa de pollo con vegetales bajos en carbohidratos (450 kcal)','Snacks: Palitos de apio con mantequilla de almendra (150 kcal)'], totals: '~1550 kcal • 120g proteína • 55g carbohidratos • 90g grasas' }
+];
+const HIGHPROT_MEALS = [
+    { items: ['Desayuno: Claras de huevo revueltas con espinacas + tostada integral (350 kcal)','Almuerzo: Pechuga de pollo 200g con arroz y brócoli (600 kcal)','Cena: Atún a la plancha con ensalada de garbanzos (450 kcal)','Snacks: Batido de proteína con leche descremada (300 kcal)'], totals: '~1700 kcal • 140g proteína • 140g carbohidratos • 40g grasas' },
+    { items: ['Desayuno: Batido de proteína, avena y plátano (400 kcal)','Almuerzo: Ternera magra a la plancha con quinoa y vegetales (600 kcal)','Cena: Pescado blanco al horno con lentejas (450 kcal)','Snacks: Yogur griego doble + frutos rojos (250 kcal)'], totals: '~1700 kcal • 135g proteína • 145g carbohidratos • 42g grasas' }
+];
+const KETO_MEALS = [
+    { items: ['Desayuno: Huevos fritos con bacon y aguacate (500 kcal)','Almuerzo: Pechuga de pollo con mantequilla y brócoli al vapor (600 kcal)','Cena: Salmón con mantequilla y espárragos (550 kcal)','Snacks: Queso cheddar + nueces (250 kcal)'], totals: '~1900 kcal • 95g proteína • 25g carbohidratos • 155g grasas' },
+    { items: ['Desayuno: Tortilla de espinacas con queso feta (450 kcal)','Almuerzo: Costillas de cerdo con coliflor gratinada (650 kcal)','Cena: Sopa de crema de champiñones con pollo (500 kcal)','Snacks: Aceitunas + almendras (250 kcal)'], totals: '~1850 kcal • 90g proteína • 30g carbohidratos • 150g grasas' }
+];
+const VEGETARIAN_MEALS = [
+    { items: ['Desayuno: Tostadas con mantequilla de cacahuate y plátano (400 kcal)','Almuerzo: Bowl de quinoa, tofu, aguacate y vegetales (550 kcal)','Cena: Frittata de huevos con espinacas, tomate y queso (450 kcal)','Snacks: Hummus + zanahorias (200 kcal)'], totals: '~1600 kcal • 70g proteína • 170g carbohidratos • 55g grasas' },
+    { items: ['Desayuno: Smoothie de leche de soya, avena y frutos rojos (350 kcal)','Almuerzo: Pasta integral con pesto de aguacate y tomate (550 kcal)','Cena: Lentejas con curry de coliflor y arroz integral (500 kcal)','Snacks: Yogur + nueces (200 kcal)'], totals: '~1600 kcal • 65g proteína • 180g carbohidratos • 50g grasas' }
+];
+const VEGAN_MEALS = [
+    { items: ['Desayuno: Avena cocida con leche de almendra, chía y arándanos (350 kcal)','Almuerzo: Tofu salteado con quinoa, espinacas y salsa de soja (550 kcal)','Cena: Curry de garbanzos con arroz integral y espinacas (500 kcal)','Snacks: Batido de proteína vegetal (250 kcal)'], totals: '~1650 kcal • 75g proteína • 200g carbohidratos • 48g grasas' },
+    { items: ['Desayuno: Tostadas de pan integral con hummus y tomate (350 kcal)','Almuerzo: Bowl de lentejas, batata, aguacate y aderezo de tahini (550 kcal)','Cena: Seitan a la plancha con puré de coliflor y brócoli (500 kcal)','Snacks: Frutos secos + naranja (250 kcal)'], totals: '~1650 kcal • 85g proteína • 190g carbohidratos • 50g grasas' }
+];
+
+/* ============ PROGRESS CHARTS ============ */
+function renderProgressCharts() {
+    const ctx1 = document.getElementById('progressIMCChart');
+    if (ctx1 && imcHistory.length > 0) {
+        const labels = imcHistory.map((h,i) => h.date + (i===imcHistory.length-1?' (hoy)':''));
+        const data = imcHistory.map(h => h.imc);
+        if (charts.progressIMC) charts.progressIMC.destroy();
+        charts.progressIMC = new Chart(ctx1, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'IMC', data, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3, pointRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, min: 15, max: 40 } }, plugins: { legend: { display: false } } }
+        });
+    }
+    const ctx2 = document.getElementById('progressWaterChart');
+    if (ctx2) {
+        const labels2 = [], data2 = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const key = d.toISOString().slice(0,10);
+            labels2.push(d.toLocaleDateString('es', {weekday:'short'}));
+            data2.push(waterHistory[key] || 0);
+        }
+        if (charts.progressWater) charts.progressWater.destroy();
+        charts.progressWater = new Chart(ctx2, {
+            type: 'bar',
+            data: { labels: labels2, datasets: [{ label: 'Vasos', data: data2, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: Math.max(...data2, waterGoal) + 2 } }, plugins: { legend: { display: false } } }
+        });
+    }
+}
+
+/* ============ CHAT HISTORY ============ */
+function loadChatHistory() {
+    try { chatHistory = JSON.parse(localStorage.getItem('nutriChatHistory') || '[]'); } catch(e) { chatHistory = []; }
+}
+function saveCurrentChat() {
+    if (messages.length === 0) return;
+    const title = messages.find(m => m.role === 'user')?.content?.slice(0, 40) || 'Chat sin título';
+    const entry = { id: Date.now(), date: new Date().toISOString(), title, messages: JSON.parse(JSON.stringify(messages)) };
+    chatHistory.unshift(entry);
+    localStorage.setItem('nutriChatHistory', JSON.stringify(chatHistory));
+    renderHistoryList();
+    addMessage('bot', '💾 Chat guardado en historial.');
+}
+function renderHistoryList() {
+    const el = document.getElementById('historyList');
+    if (chatHistory.length === 0) { el.innerHTML = '<div style="text-align:center; color:var(--text-light); font-size:13px; padding:20px;">No hay chats guardados aún.</div>'; return; }
+    el.innerHTML = chatHistory.map(h => `<div class="history-item" onclick="loadChat(${h.id})"><div><div style="font-weight:600; color:var(--text-primary); margin-bottom:2px;">${escapeHtml(h.title)}</div><div class="history-date">${new Date(h.date).toLocaleString('es')}</div></div><span class="del" onclick="event.stopPropagation(); deleteChat(${h.id})">🗑️</span></div>`).join('');
+}
+function loadChat(id) {
+    const h = chatHistory.find(c => c.id === id);
+    if (!h) return;
+    messages = JSON.parse(JSON.stringify(h.messages));
+    container.innerHTML = '';
+    messages.forEach(m => renderStoredMessage(m.role, m.content));
+    closeModal('modalHistory');
+    scrollToBottom();
+}
+function renderStoredMessage(role, text) {
+    const div = document.createElement('div'); div.className = 'message ' + role + '-message';
+    const avatar = role === 'bot' ? '🥗' : '👤';
+    const time = new Date().toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'});
+    let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    div.innerHTML = '<div class="message-avatar">'+avatar+'</div><div class="message-content"><div class="message-text">'+formatted+'</div><div class="message-time">'+time+'</div></div>';
+    container.appendChild(div);
+}
+function deleteChat(id) {
+    chatHistory = chatHistory.filter(c => c.id !== id);
+    localStorage.setItem('nutriChatHistory', JSON.stringify(chatHistory));
+    renderHistoryList();
+}
+function clearAllHistory() {
+    if (!confirm('¿Borrar TODO el historial? Esta acción no se puede deshacer.')) return;
+    chatHistory = []; localStorage.setItem('nutriChatHistory', '[]'); renderHistoryList();
+}
+function loadCurrentChat() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('nutriCurrentChat') || '[]');
+        if (saved.length > 0) {
+            messages = saved;
+            container.innerHTML = '';
+            messages.forEach(m => renderStoredMessage(m.role, m.content));
+        }
+    } catch(e) {}
+}
+function persistCurrentChat() {
+    localStorage.setItem('nutriCurrentChat', JSON.stringify(messages));
+}
+
+/* ============ INPUT ============ */
+input.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px'; });
+function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+/* ============ VOICE ============ */
+function initVoice() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES'; recognition.continuous = false; recognition.interimResults = false;
+    recognition.onresult = (e) => { input.value = e.results[0][0].transcript; input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; };
+    recognition.onerror = () => { document.getElementById('voiceBtn').classList.remove('recording'); };
+    recognition.onend = () => { document.getElementById('voiceBtn').classList.remove('recording'); };
+}
+function toggleVoice() {
+    if (!recognition) { alert('Tu navegador no soporta reconocimiento de voz.'); return; }
+    const btn = document.getElementById('voiceBtn');
+    if (btn.classList.contains('recording')) { recognition.stop(); btn.classList.remove('recording'); }
+    else { recognition.start(); btn.classList.add('recording'); }
+}
+
+/* ============ CHAT FUNCTIONS ============ */
+function sendTopic(text) { input.value = text; sendMessage(); }
+async function sendMessage() {
+    const text = input.value.trim(); if (!text || isTyping) return;
+    addMessage('user', text); input.value = ''; input.style.height = 'auto';
+    showTyping(); isTyping = true; btn.disabled = true;
+    try {
+        let reply = null;
+        if (apiConfig.provider && apiConfig.provider !== 'none' && apiConfig.key) {
+            reply = await callAI(text);
+        }
+        if (!reply && apiConfig.useLocalFallback) {
+            reply = generateReply(text);
+        }
+        if (!reply) reply = generateReply(text);
+        removeTyping(); addMessage('bot', reply);
+    } catch(e) {
+        removeTyping(); addMessage('bot', '❌ Error al conectar con la IA. Usando respuesta local:<br><br>' + generateReply(text));
+    }
+    isTyping = false; btn.disabled = false; persistCurrentChat();
+}
+function addMessage(role, text) {
+    const div = document.createElement('div'); div.className = 'message ' + role + '-message';
+    const avatar = role === 'bot' ? '🥗' : '👤';
+    const time = new Date().toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'});
+    let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    div.innerHTML = '<div class="message-avatar">'+avatar+'</div><div class="message-content"><div class="message-text">'+formatted+'</div><div class="message-time">'+time+'</div></div>';
+    container.appendChild(div); scrollToBottom(); messages.push({role: role, content: text});
+    persistCurrentChat();
+}
+function showTyping() { const div = document.createElement('div'); div.className = 'message bot-message'; div.id = 'typingIndicator'; div.innerHTML = '<div class="message-avatar">🥗</div><div class="message-content"><div class="message-text typing-indicator"><span></span><span></span><span></span></div></div>'; container.appendChild(div); scrollToBottom(); }
+function removeTyping() { const el = document.getElementById('typingIndicator'); if (el) el.remove(); }
+function scrollToBottom() { container.scrollTop = container.scrollHeight; }
+function newChat() { messages = []; container.innerHTML = ''; localStorage.removeItem('nutriCurrentChat'); showWelcome(); }
+function showWelcome() {
+    const welcome = '¡Hola! Soy <strong>NutriBot Pro Max</strong>, tu asistente nutricional avanzado con IA. 🌱<br><br>Puedo ayudarte con:<ul><li>Planes de comidas, recetas y Meal Planner</li><li>Pérdida de peso, nutrición deportiva y macros</li><li>Suplementos, hidratación y ayuno intermitente</li><li>Diabetes, intolerancias, embarazo y más</li><li><strong>Calculadoras de IMC y TDEE</strong></li><li><strong>Tracker de agua y gráficos de progreso</strong></li></ul>¿Qué te gustaría explorar hoy? 😊<br><br><div class="quick-replies"><button class="quick-reply" onclick="sendTopic(\'Calcula mi IMC\')">📊 Calcula mi IMC</button><button class="quick-reply" onclick="sendTopic(\'Qué debería desayunar hoy?\')">🍳 Desayuno</button><button class="quick-reply" onclick="sendTopic(\'Cómo perder grasa abdominal\')">🔥 Perder grasa</button><button class="quick-reply" onclick="sendTopic(\'Genera un plan de comidas\')">🍽️ Plan de comidas</button></div>';
+    const div = document.createElement('div'); div.className = 'message bot-message';
+    div.innerHTML = '<div class="message-avatar">🥗</div><div class="message-content"><div class="message-text">'+welcome+'</div><div class="message-time">Ahora</div></div>';
+    container.appendChild(div); messages.push({role:'bot', content: welcome.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')});
+}
+function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============ AI INTEGRATION ============ */
+async function callAI(text) {
+    if (apiConfig.provider === 'openai') return await callOpenAI(text);
+    if (apiConfig.provider === 'gemini') return await callGemini(text);
+    if (apiConfig.provider === 'claude') return await callClaude(text);
+    return null;
+}
+async function callOpenAI(text) {
+    const msgs = [{role:'system', content: apiConfig.systemPrompt}];
+    messages.slice(-10).forEach(m => msgs.push({role: m.role==='bot'?'assistant':'user', content: m.content}));
+    msgs.push({role:'user', content: text});
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + apiConfig.key },
+        body: JSON.stringify({ model: apiConfig.model || 'gpt-4o-mini', messages: msgs, temperature: 0.7, max_tokens: 1500 })
+    });
+    if (!res.ok) throw new Error('OpenAI error: ' + res.status);
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+}
+async function callGemini(text) {
+    const model = apiConfig.model || 'gemini-1.5-flash';
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiConfig.key;
+    const parts = [];
+    if (apiConfig.systemPrompt) parts.push({role:'user', parts:[{text: apiConfig.systemPrompt + '\n\nUsuario: ' + text}]});
+    else parts.push({role:'user', parts:[{text: text}]});
+    const res = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ contents: parts, generationConfig: { temperature: 0.7, maxOutputTokens: 1500 } })
+    });
+    if (!res.ok) throw new Error('Gemini error: ' + res.status);
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+}
+async function callClaude(text) {
+    const msgs = [];
+    messages.slice(-10).forEach(m => msgs.push({role: m.role==='bot'?'assistant':'user', content: m.content}));
+    msgs.push({role:'user', content: text});
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'Content-Type':'application/json', 'x-api-key': apiConfig.key, 'anthropic-version':'2023-06-01' },
+        body: JSON.stringify({ model: apiConfig.model || 'claude-3-5-sonnet-20241022', max_tokens: 1500, system: apiConfig.systemPrompt, messages: msgs })
+    });
+    if (!res.ok) throw new Error('Claude error: ' + res.status);
+    const data = await res.json();
+    return data.content?.[0]?.text || null;
+}
+
+/* ============ EXPORTS ============ */
+function exportChat() {
+    if (messages.length === 0) { alert('No hay mensajes para guardar'); return; }
+    let text = '=== CONVERSACIÓN NUTRIBOT PRO MAX ===\n';
+    messages.forEach(m => { text += '[' + (m.role === 'bot' ? 'NUTRIBOT' : 'TÚ') + '] ' + m.content.replace(/<br>/g, ' ').replace(/<[^>]*>/g, '') + '\n\n'; });
+    const blob = new Blob([text], {type: 'text/plain'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nutribot-chat-' + new Date().toISOString().slice(0,10) + '.txt'; a.click();
+}
+async function exportChatPDF() {
+    if (messages.length === 0) { alert('No hay mensajes para guardar'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16); doc.text('NutriBot Pro Max - Conversación', 14, 20);
+    doc.setFontSize(10); doc.setTextColor(100); doc.text('Fecha: ' + new Date().toLocaleString('es'), 14, 28);
+    let y = 38;
+    messages.forEach(m => {
+        const role = m.role === 'bot' ? 'NutriBot' : 'Tú';
+        const clean = m.content.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '').replace(/\*\*/g, '');
+        const lines = doc.splitTextToSize(role + ': ' + clean, 180);
+        if (y + lines.length * 5 > 280) { doc.addPage(); y = 20; }
+        doc.setTextColor(m.role === 'bot' ? [16,185,129] : [30,41,59]); doc.setFont(undefined, 'bold');
+        doc.text(role + ':', 14, y); y += 5;
+        doc.setTextColor(60); doc.setFont(undefined, 'normal');
+        doc.text(lines, 14, y); y += lines.length * 5 + 4;
+    });
+    doc.save('nutribot-chat-' + new Date().toISOString().slice(0,10) + '.pdf');
+}
+
+/* ============ REPLY ENGINE (LOCAL FALLBACK) ============ */
+function hasAny(text, words) { return words.some(w => text.includes(w)); }
+function generateReply(msg) {
+    const lower = msg.toLowerCase();
+
+    if (hasAny(lower, ['hola','buenas','saludos','hey','hi','qué tal','que tal','buen dia','buenos dias','buenas tardes','buenas noches'])) {
+        return '¡Hola! 👋 Soy <strong>NutriBot Pro Max</strong>. ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre planes de comidas, recetas, pérdida de peso, suplementos, o usar mis herramientas (IMC, TDEE, Meal Planner, tracker de agua) desde el menú lateral. 😊';
+    }
+    if (hasAny(lower, ['dieta','adelgazar','perder peso','bajar de peso','bajar','adelgazamiento','sobrepeso','grasa corporal','definir','tonificar'])) {
+        return '🥗 <strong>Pérdida de peso saludable:</strong><br><br>• <strong>Déficit calórico moderado:</strong> reduce 300-500 kcal de tu TDEE. No hagas déficits extremos.<br>• <strong>Proteína prioritaria:</strong> 1.6-2.0g/kg para preservar músculo.<br>• <strong>Carbohidratos inteligentes:</strong> avena, batata, arroz integral, legumbres.<br>• <strong>Verduras ilimitadas:</strong> llenan el estómago con pocas calorías.<br>• <strong>Hidratación:</strong> 2-3 litros de agua al día.<br>• <strong>Sueño y estrés:</strong> 7-8 horas y manejo del estrés son cruciales.<br>• <strong>Ejercicio:</strong> fuerza 3-4x/semana + cardio moderado.<br><br>⚠️ <strong>Recuerda:</strong> consulta con un nutricionista titulado para un plan 100% personalizado.<br><br>¿Te gustaría que calculemos tu IMC o TDEE primero? Abre las calculadoras desde el menú lateral.';
+    }
+    if (hasAny(lower, ['proteina','proteínas','musculo','músculo','gimnasio','ejercicio','entrenamiento','gym','pesas','fitness','bodybuilding','hipertrofia','resistencia'])) {
+        return '💪 <strong>Proteínas y nutrición deportiva:</strong><br><br>• <strong>Cantidad:</strong> Sedentario 0.8g/kg | Activo 1.2-1.6g/kg | Atleta 1.6-2.2g/kg<br>• <strong>Fuentes animales:</strong> pechuga, pavo, pescado, huevos, lácteos griegos.<br>• <strong>Fuentes vegetales:</strong> tofu, tempeh, legumbres, quinoa, chía.<br>• <strong>Distribución:</strong> 3-4 comidas de 20-40g para máxima síntesis.<br>• <strong>Post-entreno:</strong> 20-40g proteína + carbohidratos en 2h.<br>• <strong>Creatina:</strong> 5g/día, evidencia sólida para fuerza y rendimiento.<br><br>¿Cuál es tu objetivo: ganar músculo, perder grasa, o rendimiento? También puedo generarte un plan de comidas con el Meal Planner.';
+    }
+    if (hasAny(lower, ['receta','cocinar','cocina','cena','almuerzo','desayuno','comida','platillo','plato','preparar','merienda','snack','menu','menú','plan de comidas','meal plan'])) {
+        return '🍳 <strong>Ideas de comidas saludables:</strong><br><br>Abre el <strong>Meal Planner</strong> desde el menú lateral para generar un plan semanal completo con distribución de macros y gráficas.<br><br><strong>Desayuno (350 kcal):</strong> Avena cocida con leche de almendra, plátano, canela y nueces.<br><br><strong>Almuerzo (500 kcal):</strong> Pechuga de pollo a la plancha (150g), 1 taza arroz integral, mix de brócoli, zanahoria y pimientos al vapor, 1/2 aguacate.<br><br><strong>Cena (400 kcal):</strong> Salmón al horno (150g), ensalada de espinacas, tomate, pepino y aceite de oliva, 1/2 taza quinoa.<br><br><strong>Snacks (150 kcal cada uno):</strong> Yogur griego con frutos rojos | Manzana con 1 cdta mantequilla de almendra | Zanahorias con hummus.<br><br>¿Quieres opciones vegetarianas, keto, o bajas en carbohidratos? El Meal Planner lo hace automático.';
+    }
+    if (hasAny(lower, ['grasa','grasas','colesterol','aceite','omega','lipidos','saturada','trans','insaturada'])) {
+        return '🥑 <strong>Grasas:</strong><br><br>• <strong>Saludables (INCLUIR):</strong> Omega-3 (salmón, chía, lino), monoinsaturadas (aceite de oliva, aguacate, almendras), poliinsaturadas (nueces, semillas).<br>• <strong>LIMITAR:</strong> frituras, embutidos, ultra-procesados, grasas trans.<br>• <strong>Saturadas:</strong> fuentes naturales (coco, huevos) en moderación son distintas a las procesadas.<br>• <strong>Distribución:</strong> 25-35% de calorías diarias.<br><br>¿Tienes valores de colesterol recientes que quieras comentar?';
+    }
+    if (hasAny(lower, ['agua','hidratacion','hidratación','beber','tomar agua','liquidos','deshidratacion','deshidratación'])) {
+        return '💧 <strong>Hidratación óptima:</strong><br><br>• <strong>Objetivo:</strong> 2-3 litros/día (varía según clima, actividad y peso).<br>• <strong>Señales de deshidratación:</strong> orina oscura, boca seca, fatiga, dolor de cabeza.<br>• <strong>Consejos:</strong> bebe 500ml al despertar, lleva botella reutilizable, consume frutas/verduras con alta agua, durante ejercicio 500ml/hora, electrolitos si >1h.<br>• <strong>Evita:</strong> exceso de alcohol y cafeína (diuréticos).<br><br>Prueba el <strong>Tracker de Agua</strong> desde el menú lateral para llevar el control diario con gráficas. 💧';
+    }
+    if (hasAny(lower, ['suplemento','suplementos','vitamina','vitaminas','creatina','omega','minerales','calcio','magnesio','zinc','preworkout','whey','bcaa','multivitaminico'])) {
+        return '💊 <strong>Suplementación inteligente:</strong><br><br>• <strong>Vitamina D3:</strong> 1000-2000 UI/día (esencial si poco sol).<br>• <strong>Omega-3:</strong> 1-2g/día si no comes pescado azul 2-3x/semana.<br>• <strong>Proteína en polvo:</strong> conveniente si no cubres con comida. 20-30g post-entreno.<br>• <strong>Creatina monohidratada:</strong> 5g/día. Evidencia más sólida.<br>• <strong>Magnesio:</strong> 200-400mg antes de dormir (calambres, insomnio, estrés).<br>• <strong>Multivitamínico:</strong> útil como "seguro" si dieta no es variada.<br>• <strong>BCAAs:</strong> generalmente innecesarios si cubres proteína total.<br><br>⚠️ Los suplementos complementan, no reemplazan una buena alimentación. Consulta si tienes condiciones médicas.<br><br>¿Algún suplemento específico te interesa?';
+    }
+    if (hasAny(lower, ['carbohidrato','carbohidratos','carbo','azucar','azúcar','glucosa','fructosa','pan','pasta','arroz','cereal','avena','fibra','indice glucemico','glucémico','keto','cetogenica','low carb'])) {
+        return '🍞 <strong>Carbohidratos: mitos y realidades:</strong><br><br>• <strong>No son el enemigo.</strong> Son la principal fuente de energía del cuerpo y cerebro.<br>• <strong>Complejos (PRIORIZAR):</strong> avena, quinoa, arroz integral, batata, legumbres, frutas enteras, vegetales.<br>• <strong>Simples (LIMITAR):</strong> azúcar añadida, refrescos, dulces, pan blanco, ultra-procesados, jugos de fruta.<br>• <strong>Índice glucémico:</strong> la carga glucémica y el contexto (proteína, grasa, fibra) también importan.<br>• <strong>Post-entreno:</strong> carbohidratos recuperan glucógeno muscular dentro de 2h.<br>• <strong>Keto:</strong> puede funcionar para algunos, pero requiere supervisión médica.<br><br>¿Sigues alguna dieta baja en carbohidratos o tienes diabetes?';
+    }
+    if (hasAny(lower, ['vegetariano','vegano','vegetariana','vegana','sin carne','plant based','plant-based','crudivegano','ovo-lacto','ovolacto'])) {
+        return '🌱 <strong>Nutrición vegetariana y vegana:</strong><br><br>• <strong>Proteína:</strong> legumbres, tofu, tempeh, seitan, quinoa, chía, hemp. Combina fuentes para aminoácidos completos.<br>• <strong>Vitamina B12:</strong> ESENCIAL suplementar si eres vegano (no existe en plantas). 250-500mcg/día.<br>• <strong>Hierro:</strong> fuentes vegetales (lentejas, espinacas) con vitamina C para mejor absorción.<br>• <strong>Omega-3:</strong> semillas de lino, chía, nueces, o suplemento de algas EPA/DHA.<br>• <strong>Zinc:</strong> garbanzos, semillas de calabaza, nueces, avena.<br>• <strong>Calcio:</strong> tofu con calcio, vegetales de hoja verde, bebidas fortificadas.<br><br>Abre el <strong>Meal Planner</strong> para generar planes vegetarianos o veganos automáticos.';
+    }
+    if (hasAny(lower, ['diabetes','glucosa','insulina','azucar en sangre','tipo 1','tipo 2','prediabetes','resistencia a la insulina','hba1c','hemoglobina glicosilada'])) {
+        return '🩺 <strong>Diabetes y alimentación:</strong><br><br>• <strong>Carbohidratos complejos:</strong> prioriza integrales (avena, quinoa, legumbres, vegetales) sobre refinados.<br>• <strong>Fibra:</strong> apunta a 25-35g/día. Ralentiza absorción de glucosa.<br>• <strong>Proteína en cada comida:</strong> ayuda a estabilizar azúcar.<br>• <strong>Grasas saludables:</strong> omega-3, aceite de oliva, aguacate. Evita grasas trans.<br>• <strong>Limitar:</strong> azúcares añadidos, refrescos, jugos de fruta, ultra-procesados.<br>• <strong>Índice glucémico:</strong> no es lo único, pero alimentos de bajo IG (legumbres, avena, manzanas) ayudan.<br>• <strong>Control de porciones:</strong> incluso carbohidratos saludables en exceso elevan glucosa.<br>• <strong>Monitoreo:</strong> controla glucosa post-prandial para identificar respuestas personales.<br><br>⚠️ <strong>IMPORTANTE:</strong> la nutrición en diabetes debe ser personalizada por un médico o nutricionista especializado. Nunca ajustes medicamentos basándote solo en información online.<br><br>¿Tienes diabetes tipo 1, tipo 2 o prediabetes? ¿Estás tomando medicación?';
+    }
+    if (hasAny(lower, ['embarazo','lactancia','embarazada','gestacion','gestación','fertilidad','embarazo saludable','nutricion prenatal','prenatal'])) {
+        return '🤰 <strong>Nutrición en embarazo y lactancia:</strong><br><br>• <strong>Calorías extra:</strong> 1er trimestre: 0 kcal extra | 2do: +340 kcal/día | 3ro: +450 kcal/día | Lactancia: +500 kcal/día.<br>• <strong>Ácido fólico:</strong> 400-600 mcg/día antes y durante el embarazo (evita defectos del tubo neural).<br>• <strong>Hierro:</strong> necesidades aumentan a 27mg/día. Fuentes: carne roja magra, espinacas, lentejas con vitamina C.<br>• <strong>Calcio:</strong> 1000mg/día. Lácteos, vegetales de hoja verde, tofu con calcio.<br>• <strong>Omega-3 DHA:</strong> 200-300mg/día para desarrollo cerebral del bebé. Pescado azul bajo en mercurio o suplemento de algas.<br>• <strong>Proteína:</strong> +25g/día durante embarazo.<br>• <strong>Evitar:</strong> alcohol, cigarrillo, pescados altos en mercurio (tiburón, pez espada, mero), quesos no pasteurizados, carnes crudas.<br>• <strong>Ganancia de peso:</strong> según IMC pre-gestacional. Tu médico te dará el rango ideal.<br><br>⚠️ Consulta siempre a tu médico y nutricionista. Cada embarazo es único.<br><br>¿En qué trimestre estás? ¿Tienes alguna complicación como diabetes gestacional?';
+    }
+    if (hasAny(lower, ['intolerancia','alergia','celiaquia','gluten','lactosa','histamina','fructosa','fodmap','intolerancia alimentaria','sensibilidad alimentaria'])) {
+        return '🌾 <strong>Intolerancias y alergias alimentarias:</strong><br><br>• <strong>Celiaquia:</strong> enfermedad autoinmune. Elimina gluten 100% (trigo, cebada, centeno). Lee etiquetas cuidadosamente. Fuentes seguras: arroz, quinoa, maíz, avena sin gluten certificada.<br>• <strong>Intolerancia a la lactosa:</strong> prueba productos sin lactosa, leches vegetales (avena, almendra, soya), yogures con cultivos probióticos (tienen menos lactosa).<br>• <strong>FODMAPs:</strong> dieta baja en FODMAPs para SII (síndrome del intestino irritable). Fases: eliminación 2-6 semanas, reintroducción controlada, personalización.<br>• <strong>Histamina:</strong> evita alimentos fermentados, embutidos, quesos curados, alcohol, pescado no fresco, tomates, espinacas.<br>• <strong>Fructosa:</strong> limita frutas muy dulces, miel, jarabe de maíz alto en fructosa.<br>• <strong>Alérgenos comunes:</strong> gluten, lácteos, frutos secos, cacahuates, mariscos, huevo, soya, pescado.<br><br>⚠️ Si sospechas una alergia alimentaria, consulta a un alergólogo para pruebas. No hagas eliminaciones extremas sin supervisión.<br><br>¿Tienes algún diagnóstico confirmado? ¿Qué síntomas experimentas?';
+    }
+    if (hasAny(lower, ['ayuno','intermitente','ayuno intermitente','16/8','5:2','omad','ayuno prolongado','autofagia'])) {
+        return '⏰ <strong>Ayuno intermitente:</strong><br><br>• <strong>16/8:</strong> ayuna 16h, come en ventana de 8h (ej: 12pm-8pm). El más popular y sostenible.<br>• <strong>5:2:</strong> 5 días normales, 2 días con 500-600 kcal (no consecutivos).<br>• <strong>OMAD:</strong> One Meal A Day. Una comida al día. Más extremo, no para todos.<br>• <strong>Beneficios potenciales:</strong> mejora sensibilidad a insulina, posible beneficios cognitivos, simplificación de comidas.<br>• <strong>Contraindicaciones:</strong> embarazo, lactancia, diabetes con medicación, historia de trastornos alimentarios, bajo peso, adolescentes.<br>• <strong>Hidratación:</strong> durante el ayuno: agua, café negro, té sin azúcar están permitidos.<br>• <strong>Romper el ayuno:</strong> evita comidas muy pesadas o ultra-procesadas. Prioriza proteína + fibra + grasas saludables.<br><br>⚠️ Si tienes condiciones médicas, consulta a tu médico antes de ayunar.<br><br>¿Qué método de ayuno te interesa? ¿Tienes experiencia previa?';
+    }
+    if (hasAny(lower, ['mito','mitos','verdades','realidad','engaño','falso','cierto','verdadero','desmentir','estafa','moda'])) {
+        return '🧐 <strong>Mitos nutricionales desmentidos:</strong><br><br>• <strong>"El pan engorda":</strong> FALSO. El exceso de calorías engorda, no un alimento específico. Pan integral en porciones adecuadas es saludable.<br>• <strong>"Comer de noche engorda":</strong> FALSO. Importa el total calórico diario, no la hora. Pero comer tarde puede afectar sueño.<br>• <strong>"Los carbohidratos son malos":</strong> FALSO. Son la principal fuente de energía. El problema son los refinados y el exceso.<br>• <strong>"Los detox limpian el cuerpo":</strong> FALSO. Hígado y riñones ya desintoxican. No necesitas jugos milagrosos.<br>• <strong>"La proteína daña los riñones":</strong> FALSO en personas sanas. En enfermedad renal preexistente, sí debe controlarse.<br>• <strong>"Las grasas saturadas son malas":</strong> MITO. Fuentes naturales (huevo, coco) en moderación son diferentes a grasas trans procesadas.<br>• <strong>"Suplementos mágicos queman grasa":</strong> FALSO. No existe píldora milagrosa. Déficit calórico y ejercicio son la base.<br>• <strong>"El desayuno es la comida más importante":</strong> RELATIVO. Para algunos ayuda, pero no es obligatorio.<br><br>¿Hay algún mito en particular que te preocupe?';
+    }
+    if (hasAny(lower, ['estres','estrés','ansiedad','depresion','depresión','comer emocional','comer por ansiedad','nervios','nervioso','triste','aburrido','comer por aburrimiento'])) {
+        return '🧘 <strong>Comer y emociones:</strong><br><br>• <strong>Regla de los 10 minutos:</strong> antes de comer por ansiedad, espera. Muchas veces el impulso pasa.<br>• <strong>Identifica el trigger:</strong> ¿hambre real o emoción? Hambre física vs. emocional.<br>• <strong>Alternativas:</strong> caminar, respirar profundo, escribir, llamar a alguien, ducharte.<br>• <strong>No tengas alimentos ultra-procesados al alcance fácil.</strong><br>• <strong>Alimentación consciente:</strong> come sin pantallas, mastica bien, nota sabores y texturas.<br>• <strong>No te prives:</strong> incorpora comidas que disfrutas con moderación.<br>• <strong>Suplementos que pueden ayudar:</strong> magnesio (relajación), L-teanina (calma), ashwagandha (estrés).<br><br>¿Sientes que comes más cuando estás estresado? ¿Hay algún momento del día más difícil?';
+    }
+    if (hasAny(lower, ['metabolismo','hormonas','tiroide','hipotiroidismo','hipertiroidismo','tsh','t3','t4','testosterona','cortisol','estrogeno','progesterona','hormonal','menopausia','andropausia','pcos','sop'])) {
+        return '⚗️ <strong>Metabolismo y hormonas:</strong><br><br>• <strong>Metabolismo:</strong> conjunto de reacciones químicas. No se "enciende" con alimentos mágicos.<br>• <strong>Tiroides:</strong> hipotiroidismo dificulta pérdida de peso. Tratamiento médico fundamental (levotiroxina). No existe alimento que "cure" la tiroides.<br>• <strong>Insulina:</strong> controla carbohidratos, dormir bien, ejercicio y peso saludable.<br>• <strong>Cortisol:</strong> estrés crónico eleva cortisol, aumenta apetito y grasa abdominal. Manejo del estrés es clave.<br>• <strong>Testosterona:</strong> afecta masa muscular, energía y libido. Niveles adecuados de grasa corporal y sueño son importantes.<br>• <strong>PCOS/SOP:</strong> dieta baja en carbohidratos refinados + buena proteína. Requiere supervisión médica.<br><br>🩺 Si sospechas un problema hormonal, consulta a un endocrinólogo. No te auto-medicines.<br><br>¿Tienes algún diagnóstico hormonal confirmado?';
+    }
+    if (hasAny(lower, ['sueño','dormir','descanso','insomnio','melatonina','ritmo circadiano','cansancio','fatiga','energia','energía'])) {
+        return '😴 <strong>Sueño y nutrición:</strong><br><br>• <strong>Duración:</strong> 7-9 horas para adultos. El sueño es cuando recuperas, regulas hormonas y creces muscularmente.<br>• <strong>Alimentos que AYUDAN:</strong> kiwi, cerezas, almendras, té de manzanilla, triptófano (pavo, huevos, lácteos).<br>• <strong>Alimentos que DIFICULTAN:</strong> cafeína después de 2pm, alcohol, comidas pesadas cerca de dormir, azúcares en exceso.<br>• <strong>Magnesio:</strong> 200-400mg glicinato o citrato antes de dormir.<br>• <strong>Melatonina:</strong> 0.5-3mg para desfase horario o insomnio ocasional. No crónico sin consulta médica.<br>• <strong>Ritmo circadiano:</strong> dormir y despertar a la misma hora. Luz natural por la mañana.<br><br>¿Dormís bien últimamente? ¿Cuántas horas promedias?';
+    }
+    if (hasAny(lower, ['cafe','café','te','té','cafeína','matcha','yerba mate','refresco','alcohol','vino','cerveza','bebida azucarada','jugo','zumo'])) {
+        return '☕ <strong>Bebidas y nutrición:</strong><br><br>• <strong>Café:</strong> 3-4 tazas/día (hasta 400mg cafeína) es seguro. Beneficios: alerta, rendimiento deportivo, antioxidantes. Limita después de 2pm.<br>• <strong>Té verde:</strong> rico en catequinas y L-teanina. 2-3 tazas/día ideal.<br>• <strong>Refrescos azucarados:</strong> límitalos al máximo. Causan picos de azúcar y calorías vacías.<br>• <strong>Jugos de fruta:</strong> pierden fibra. Mejor come la fruta entera.<br>• <strong>Alcohol:</strong> limita o evita. 7 kcal/g, afecta sueño, inhibiciones y recuperación muscular. Máximo 1 copa/día (mujeres) o 2 (hombres).<br>• <strong>Agua:</strong> sigue siendo la mejor bebida.<br><br>¿Cuántas tazas de café tomas al día?';
+    }
+    if (hasAny(lower, ['restaurante','comer fuera','fast food','comida rapida','delivery','pedir comida','menu del dia','food truck','salir a comer'])) {
+        return '🍔 <strong>Comer fuera de casa:</strong><br><br>• <strong>Restaurantes:</strong> proteína a la plancha/horneada/vapor. Evita fritos. Verduras extra en lugar de papas fritas o arroz blanco.<br>• <strong>Fast food:</strong> hamburguesa sin pan (bowl), ensaladas con pollo a la plancha, wraps de lechuga.<br>• <strong>Asiática:</strong> sushi (evita tempura), teppanyaki, pho. Limita salsa de soja por sodio.<br>• <strong>Mexicana:</strong> tacos de carne asada (sin tortilla doble), fajitas, guacamole. Evita nachos con queso procesado.<br>• <strong>Italiana:</strong> pasta con salsa de tomate (no crema), carpaccio, pescado al horno. Porciones medianas.<br>• <strong>Bebidas:</strong> agua con gas y limón en lugar de refrescos o alcohol.<br>• <strong>Truco:</strong> divide la porción a la mitad y pide para llevar el resto.<br><br>¿Vas a comer fuera hoy? ¿De qué tipo de restaurante se trata?';
+    }
+    if (hasAny(lower, ['trastorno alimentario','anorexia','bulimia','atracón','binge','comer emocional','ortorexia','relación con la comida','cuerpo','autoestima'])) {
+        return '💚 <strong>Relación con la comida y salud mental:</strong><br><br>Reconocer que hay un problema es el primer paso, y eso ya es valiente.<br><br>• <strong>Señales de alerta:</strong> obsesión con la comida, restricción extrema, atracones seguidos de culpa, ejercicio compulsivo, miedo a ciertos alimentos, aislamiento social por la comida.<br>• <strong>Comer emocional:</strong> pausa de 10 minutos antes de comer, identificar el trigger, buscar alternativas (caminar, respirar, llamar a alguien).<br>• <strong>Nutrición intuitiva:</strong> escucha las señales de hambre y saciedad. Come sin distraerte. Rechaza dietas restrictivas.<br>• <strong>Cuerpo y autoestima:</strong> tu valor no está en tu peso. La diversidad de cuerpos es real y natural.<br><br>🩺 <strong>IMPORTANTE:</strong> si tu relación con la comida está afectando tu vida, busca ayuda profesional. Un psicólogo y nutricionista especializado en TCA pueden acompañarte.<br><br>¿Te sientes identificado con alguna de estas situaciones?';
+    }
+    if (hasAny(lower, ['imc','indice de masa corporal','masa corporal','sobrepeso','obesidad','bajo peso'])) {
+        return '📊 <strong>Índice de Masa Corporal (IMC):</strong><br><br>El IMC es una medida rápida de peso relativo a la altura, aunque no es perfecta (no distingue músculo de grasa).<br><br>• <strong>&lt; 18.5:</strong> Bajo peso<br>• <strong>18.5 - 24.9:</strong> Peso normal<br>• <strong>25.0 - 29.9:</strong> Sobrepeso<br>• <strong>≥ 30.0:</strong> Obesidad<br><br>Abre la <strong>Calculadora de IMC</strong> desde el menú lateral para calcular el tuyo, guardar historial y ver gráficas de progreso.<br><br>¿Quieres que también calculemos tu TDEE (calorías diarias necesarias)?';
+    }
+    if (hasAny(lower, ['tdee','calorias diarias','gasto calorico','metabolismo basal','bmr','calorias necesarias','mantener peso','cuantas calorias','cuántas calorías'])) {
+        return '🔥 <strong>TDEE (Gasto Energético Total Diario):</strong><br><br>Es la cantidad de calorías que quemas al día incluyendo actividad física.<br><br>Usamos la fórmula de <strong>Mifflin-St Jeor</strong>, la más precisa actualmente:<br>• Hombres: (10 × peso kg) + (6.25 × altura cm) - (5 × edad) + 5<br>• Mujeres: (10 × peso kg) + (6.25 × altura cm) - (5 × edad) - 161<br>• Luego multiplicas por tu factor de actividad (1.2 a 1.9).<br><br>Abre la <strong>Calculadora TDEE</strong> desde el menú lateral para calcular las tuyas y ver la distribución de macronutrientes recomendada.<br><br>¿Quieres perder peso, mantener o ganar músculo? Te diré cómo ajustar las calorías.';
+    }
+    if (hasAny(lower, ['plan de comidas','meal plan','plan semanal','menu semanal','menú semanal','genera un plan','generame un plan','que debo comer esta semana'])) {
+        return '🍽️ <strong>Plan de comidas semanal:</strong><br><br>Abre el <strong>Meal Planner</strong> desde el menú lateral para generar un plan automático según:<br>• Tus calorías objetivo<br>• Tipo de dieta (balanceada, keto, vegetariana, vegana, alta proteína, baja en carbohidratos)<br>• Porcentajes personalizados de proteínas, carbohidratos y grasas<br><br>El Meal Planner genera un plan para 7 días con desayuno, almuerzo, cena y snacks, y muestra una gráfica de distribución de macros.<br><br>¿Cuántas calorías al día buscas? ¿Tienes alguna preferencia dietética?';
+    }
+    return '🍎 <strong>¡Gracias por tu pregunta!</strong> Como nutricionista virtual avanzado, puedo ayudarte con:<br><br>• <strong>Planes de comidas y recetas</strong> personalizadas<br>• <strong>Pérdida de peso y definición</strong> de forma saludable<br>• <strong>Ganancia muscular</strong> y nutrición deportiva<br>• <strong>Proteínas, carbohidratos, grasas</strong> y micronutrientes<br>• <strong>Suplementos, hidratación y ayuno</strong><br>• <strong>Diabetes, intolerancias, embarazo</strong> y etapas especiales<br>• <strong>Vegetarianismo, veganismo</strong><br>• <strong>Trastornos alimentarios</strong> y relación con la comida<br>• <strong>Mitos nutricionales</strong> y evidencia científica<br><br>También puedes usar mis herramientas:<br>• 📊 <strong>IMC</strong> con historial y gráficos<br>• 🔥 <strong>TDEE</strong> con distribución de macros<br>• 💧 <strong>Tracker de agua</strong> con gráficos<br>• 🍽️ <strong>Meal Planner</strong> semanal<br>• 📈 <strong>Progreso</strong> visual<br><br>¿Podrías darme más detalles sobre tu objetivo? 😊';
+}
+
+/* ============ START ============ */
+init();
+</script>
+</body>
+</html>
